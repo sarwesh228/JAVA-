@@ -1,0 +1,251 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.ArrayList;
+
+class Car implements Serializable {
+    private static final long serialVersionUID = 1L;
+    String brand, model, color, fuelType, condition;
+    int year, mileage;
+    double price;
+
+    public Car(String brand, String model, int year, double price, String color, String fuelType, int mileage, String condition) {
+        this.brand = brand;
+        this.model = model;
+        this.year = year;
+        this.price = price;
+        this.color = color;
+        this.fuelType = fuelType;
+        this.mileage = mileage;
+        this.condition = condition;
+    }
+
+    public Object[] toRow() {
+        return new Object[]{brand, model, year, price, color, fuelType, mileage, condition};
+    }
+}
+
+class Sale implements Serializable {
+    private static final long serialVersionUID = 1L;
+    String buyerName, buyerPhone, brand, model;
+    double price;
+
+    public Sale(String buyerName, String buyerPhone, String brand, String model, double price) {
+        this.buyerName = buyerName;
+        this.buyerPhone = buyerPhone;
+        this.brand = brand;
+        this.model = model;
+        this.price = price;
+    }
+
+    public Object[] toRow() {
+        return new Object[]{buyerName, buyerPhone, brand, model, price};
+    }
+}
+
+public class CarSellingSystem extends JFrame {
+    private ArrayList<Car> cars = new ArrayList<>();
+    private ArrayList<Sale> sales = new ArrayList<>();
+    private JTable table;
+    private DefaultTableModel model;
+
+    public CarSellingSystem() {
+        setTitle("Car Selling System");
+        setSize(1000, 550);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        String[] columns = {"Brand", "Model", "Year", "Price", "Color", "Fuel", "Mileage", "Condition"};
+        model = new DefaultTableModel(columns, 0);
+        table = new JTable(model);
+        JScrollPane scroll = new JScrollPane(table);
+
+        JButton addBtn = new JButton("Add Car");
+        JButton deleteBtn = new JButton("Delete Car");
+        JButton searchBtn = new JButton("Search Car");
+        JButton showAllBtn = new JButton("Show All");
+        JButton sellBtn = new JButton("Sell Car");
+        JButton viewSalesBtn = new JButton("View Sales");
+        JButton exitBtn = new JButton("Exit");
+
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(addBtn);
+        btnPanel.add(deleteBtn);
+        btnPanel.add(searchBtn);
+        btnPanel.add(showAllBtn);
+        btnPanel.add(sellBtn);
+        btnPanel.add(viewSalesBtn);
+        btnPanel.add(exitBtn);
+
+        add(scroll, BorderLayout.CENTER);
+        add(btnPanel, BorderLayout.SOUTH);
+
+        loadData();
+
+        addBtn.addActionListener(e -> addCar());
+        deleteBtn.addActionListener(e -> deleteCar());
+        searchBtn.addActionListener(e -> searchCar());
+        showAllBtn.addActionListener(e -> displayCars());
+        sellBtn.addActionListener(e -> sellCar());
+        viewSalesBtn.addActionListener(e -> viewSales());
+        exitBtn.addActionListener(e -> {
+            saveData();
+            System.exit(0);
+        });
+    }
+
+    private void addCar() {
+        JTextField brand = new JTextField();
+        JTextField modelF = new JTextField();
+        JTextField year = new JTextField();
+        JTextField price = new JTextField();
+        JTextField color = new JTextField();
+        JTextField fuel = new JTextField();
+        JTextField mileage = new JTextField();
+        JTextField condition = new JTextField();
+
+        Object[] fields = {
+                "Brand:", brand,
+                "Model:", modelF,
+                "Year:", year,
+                "Price:", price,
+                "Color:", color,
+                "Fuel Type:", fuel,
+                "Mileage:", mileage,
+                "Condition:", condition
+        };
+
+        int option = JOptionPane.showConfirmDialog(this, fields, "Add New Car", JOptionPane.OK_CANCEL_OPTION);
+        if (option == JOptionPane.OK_OPTION) {
+            try {
+                Car c = new Car(
+                        brand.getText(), modelF.getText(),
+                        Integer.parseInt(year.getText()), Double.parseDouble(price.getText()),
+                        color.getText(), fuel.getText(),
+                        Integer.parseInt(mileage.getText()), condition.getText()
+                );
+                cars.add(c);
+                model.addRow(c.toRow());
+                saveData();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Invalid input! Please enter correct details.");
+            }
+        }
+    }
+
+    private void deleteCar() {
+        int row = table.getSelectedRow();
+        if (row >= 0) {
+            cars.remove(row);
+            model.removeRow(row);
+            saveData();
+        } else {
+            JOptionPane.showMessageDialog(this, "Select a car to delete!");
+        }
+    }
+
+    private void searchCar() {
+        String keyword = JOptionPane.showInputDialog(this, "Enter brand or model to search:");
+        if (keyword == null || keyword.isEmpty()) return;
+
+        DefaultTableModel tempModel = new DefaultTableModel(
+                new String[]{"Brand", "Model", "Year", "Price", "Color", "Fuel", "Mileage", "Condition"}, 0);
+
+        for (Car c : cars) {
+            if (c.brand.toLowerCase().contains(keyword.toLowerCase()) ||
+                    c.model.toLowerCase().contains(keyword.toLowerCase())) {
+                tempModel.addRow(c.toRow());
+            }
+        }
+
+        table.setModel(tempModel);
+    }
+
+    private void displayCars() {
+        model.setRowCount(0);
+        for (Car c : cars) model.addRow(c.toRow());
+        table.setModel(model);
+    }
+
+    private void sellCar() {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a car to sell!");
+            return;
+        }
+
+        Car selected = cars.get(row);
+
+        JTextField buyerName = new JTextField();
+        JTextField buyerPhone = new JTextField();
+
+        Object[] fields = {
+                "Buyer Name:", buyerName,
+                "Buyer Phone:", buyerPhone
+        };
+
+        int option = JOptionPane.showConfirmDialog(this, fields, "Sell Car", JOptionPane.OK_CANCEL_OPTION);
+        if (option == JOptionPane.OK_OPTION) {
+            if (buyerName.getText().isEmpty() || buyerPhone.getText().isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please fill all buyer details!");
+                return;
+            }
+
+            Sale s = new Sale(buyerName.getText(), buyerPhone.getText(), selected.brand, selected.model, selected.price);
+            sales.add(s);
+            cars.remove(row);
+            model.removeRow(row);
+            saveData();
+
+            JOptionPane.showMessageDialog(this,
+                    "Car sold successfully!\n\nBuyer: " + s.buyerName + "\nModel: " + s.model + "\nPrice: ₹" + s.price);
+        }
+    }
+
+    private void viewSales() {
+        String[] cols = {"Buyer Name", "Phone", "Brand", "Model", "Price"};
+        DefaultTableModel salesModel = new DefaultTableModel(cols, 0);
+
+        for (Sale s : sales) {
+            salesModel.addRow(s.toRow());
+        }
+
+        JTable salesTable = new JTable(salesModel);
+        JScrollPane pane = new JScrollPane(salesTable);
+
+        JOptionPane.showMessageDialog(this, pane, "Sales Records", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void loadData() {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("cars.dat"))) {
+            cars = (ArrayList<Car>) ois.readObject();
+        } catch (Exception ignored) {}
+
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("sales.dat"))) {
+            sales = (ArrayList<Sale>) ois.readObject();
+        } catch (Exception ignored) {}
+
+        displayCars();
+    }
+
+    private void saveData() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("cars.dat"))) {
+            oos.writeObject(cars);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("sales.dat"))) {
+            oos.writeObject(sales);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new CarSellingSystem().setVisible(true));
+    }
+}
